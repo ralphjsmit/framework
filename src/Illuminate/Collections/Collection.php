@@ -32,6 +32,27 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
     }
 
     /**
+     * Log the current collection
+     *
+     * @param string $message
+     * @param string $level
+     * @return self
+     */
+    public function log(string $message = null, string $level = 'debug')
+    {
+        if ($message === null) {
+            $backtrace = debug_backtrace()[0];
+            $message = "Logged collection at {$backtrace['file']} on line {$backtrace['line']}.";
+        }
+
+        tap($this, function($collection) use ($message, $level) {
+            \Log::$level($message, $collection->toArray());
+        });
+
+        return $this;
+    }
+
+    /**
      * Create a collection with the given range.
      *
      * @param  int  $from
