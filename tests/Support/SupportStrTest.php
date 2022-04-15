@@ -538,6 +538,24 @@ class SupportStrTest extends TestCase
         $this->assertSame('żółtałódka', Str::snake('ŻółtaŁódka'));
     }
 
+    public function testSquish()
+    {
+        $this->assertSame('laravel php framework', Str::squish(' laravel   php  framework '));
+        $this->assertSame('laravel php framework', Str::squish("laravel\t\tphp\n\nframework"));
+        $this->assertSame('laravel php framework', Str::squish('
+            laravel
+            php
+            framework
+        '));
+        $this->assertSame('laravel php framework', Str::squish('   laravel   php   framework   '));
+        $this->assertSame('123', Str::squish('   123    '));
+        $this->assertSame('だ', Str::squish('だ'));
+        $this->assertSame('ム', Str::squish('ム'));
+        $this->assertSame('だ', Str::squish('   だ    '));
+        $this->assertSame('ム', Str::squish('   ム    '));
+        $this->assertSame('laravel php framework', Str::squish('laravelㅤㅤㅤphpㅤframework'));
+    }
+
     public function testStudly()
     {
         $this->assertSame('LaravelPHPFramework', Str::studly('laravel_p_h_p_framework'));
@@ -683,18 +701,21 @@ class SupportStrTest extends TestCase
     {
         $this->assertSame('__Alien___', Str::padBoth('Alien', 10, '_'));
         $this->assertSame('  Alien   ', Str::padBoth('Alien', 10));
+        $this->assertSame('  ❤MultiByte☆   ', Str::padBoth('❤MultiByte☆', 16));
     }
 
     public function testPadLeft()
     {
         $this->assertSame('-=-=-Alien', Str::padLeft('Alien', 10, '-='));
         $this->assertSame('     Alien', Str::padLeft('Alien', 10));
+        $this->assertSame('     ❤MultiByte☆', Str::padLeft('❤MultiByte☆', 16));
     }
 
     public function testPadRight()
     {
         $this->assertSame('Alien-----', Str::padRight('Alien', 10, '-'));
         $this->assertSame('Alien     ', Str::padRight('Alien', 10));
+        $this->assertSame('❤MultiByte☆     ', Str::padRight('❤MultiByte☆', 16));
     }
 
     public function testSwapKeywords(): void
@@ -719,6 +740,15 @@ class SupportStrTest extends TestCase
     {
         $this->assertEquals(2, Str::wordCount('Hello, world!'));
         $this->assertEquals(10, Str::wordCount('Hi, this is my first contribution to the Laravel framework.'));
+
+        $this->assertEquals(0, Str::wordCount('мама'));
+        $this->assertEquals(0, Str::wordCount('мама мыла раму'));
+
+        $this->assertEquals(1, Str::wordCount('мама', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'));
+        $this->assertEquals(3, Str::wordCount('мама мыла раму', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'));
+
+        $this->assertEquals(1, Str::wordCount('МАМА', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'));
+        $this->assertEquals(3, Str::wordCount('МАМА МЫЛА РАМУ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'));
     }
 
     public function validUuidList()
