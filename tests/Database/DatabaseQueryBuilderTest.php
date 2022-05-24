@@ -2128,6 +2128,19 @@ class DatabaseQueryBuilderTest extends TestCase
         $this->assertEquals(['foo' => 'bar'], $results);
     }
 
+    public function testFindOrReturnsFirstResultByID()
+    {
+        $builder = $this->getMockQueryBuilder();
+        $data = m::mock(stdClass::class);
+        $builder->shouldReceive('first')->andReturn($data)->once();
+        $builder->shouldReceive('first')->with(['column'])->andReturn($data)->once();
+        $builder->shouldReceive('first')->andReturn(null)->once();
+
+        $this->assertSame($data, $builder->findOr(1, fn () => 'callback result'));
+        $this->assertSame($data, $builder->findOr(1, ['column'], fn () => 'callback result'));
+        $this->assertSame('callback result', $builder->findOr(1, fn () => 'callback result'));
+    }
+
     public function testFirstMethodReturnsFirstResult()
     {
         $builder = $this->getBuilder();
@@ -2491,7 +2504,16 @@ class DatabaseQueryBuilderTest extends TestCase
     public function testUpsertMethod()
     {
         $builder = $this->getMySqlBuilder();
-        $builder->getConnection()->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) on duplicate key update `email` = values(`email`), `name` = values(`name`)', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(false)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) on duplicate key update `email` = values(`email`), `name` = values(`name`)', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
+        $result = $builder->from('users')->upsert([['email' => 'foo', 'name' => 'bar'], ['name' => 'bar2', 'email' => 'foo2']], 'email');
+        $this->assertEquals(2, $result);
+
+        $builder = $this->getMySqlBuilder();
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(true)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) as laravel_upsert_alias on duplicate key update `email` = `laravel_upsert_alias`.`email`, `name` = `laravel_upsert_alias`.`name`', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
         $result = $builder->from('users')->upsert([['email' => 'foo', 'name' => 'bar'], ['name' => 'bar2', 'email' => 'foo2']], 'email');
         $this->assertEquals(2, $result);
 
@@ -2514,7 +2536,16 @@ class DatabaseQueryBuilderTest extends TestCase
     public function testUpsertMethodWithUpdateColumns()
     {
         $builder = $this->getMySqlBuilder();
-        $builder->getConnection()->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) on duplicate key update `name` = values(`name`)', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(false)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) on duplicate key update `name` = values(`name`)', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
+        $result = $builder->from('users')->upsert([['email' => 'foo', 'name' => 'bar'], ['name' => 'bar2', 'email' => 'foo2']], 'email', ['name']);
+        $this->assertEquals(2, $result);
+
+        $builder = $this->getMySqlBuilder();
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(true)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`, `name`) values (?, ?), (?, ?) as laravel_upsert_alias on duplicate key update `name` = `laravel_upsert_alias`.`name`', ['foo', 'bar', 'foo2', 'bar2'])->andReturn(2);
         $result = $builder->from('users')->upsert([['email' => 'foo', 'name' => 'bar'], ['name' => 'bar2', 'email' => 'foo2']], 'email', ['name']);
         $this->assertEquals(2, $result);
 
@@ -2926,7 +2957,18 @@ class DatabaseQueryBuilderTest extends TestCase
     public function testPreservedAreAppliedByUpsert()
     {
         $builder = $this->getMySqlBuilder();
-        $builder->getConnection()->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`) values (?) on duplicate key update `email` = values(`email`)', ['foo']);
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(false)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`) values (?) on duplicate key update `email` = values(`email`)', ['foo']);
+        $builder->beforeQuery(function ($builder) {
+            $builder->from('users');
+        });
+        $builder->upsert(['email' => 'foo'], 'id');
+
+        $builder = $this->getMySqlBuilder();
+        $builder->getConnection()
+            ->shouldReceive('getConfig')->with('use_upsert_alias')->andReturn(true)
+            ->shouldReceive('affectingStatement')->once()->with('insert into `users` (`email`) values (?) as laravel_upsert_alias on duplicate key update `email` = `laravel_upsert_alias`.`email`', ['foo']);
         $builder->beforeQuery(function ($builder) {
             $builder->from('users');
         });
