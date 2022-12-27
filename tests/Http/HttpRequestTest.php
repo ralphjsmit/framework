@@ -89,7 +89,7 @@ class HttpRequestTest extends TestCase
         $this->assertEquals($expected, $request->segment($segment, 'default'));
     }
 
-    public function segmentProvider()
+    public static function segmentProvider()
     {
         return [
             ['', 1, 'default'],
@@ -111,7 +111,7 @@ class HttpRequestTest extends TestCase
         $this->assertEquals(['foo', 'bar'], $request->segments());
     }
 
-    public function segmentsProvider()
+    public static function segmentsProvider()
     {
         return [
             ['', []],
@@ -452,6 +452,41 @@ class HttpRequestTest extends TestCase
         $this->assertFalse($request->missing('foo.baz'));
     }
 
+    public function testWhenMissingMethod()
+    {
+        $request = Request::create('/', 'GET', ['bar' => null]);
+
+        $name = $age = $city = $foo = $bar = true;
+
+        $request->whenMissing('name', function ($value) use (&$name) {
+            $name = 'Taylor';
+        });
+
+        $request->whenMissing('age', function ($value) use (&$age) {
+            $age = '';
+        });
+
+        $request->whenMissing('city', function ($value) use (&$city) {
+            $city = null;
+        });
+
+        $request->whenMissing('foo', function () use (&$foo) {
+            $foo = false;
+        });
+
+        $request->whenMissing('bar', function () use (&$bar) {
+            $bar = 'test';
+        }, function () use (&$bar) {
+            $bar = true;
+        });
+
+        $this->assertSame('Taylor', $name);
+        $this->assertSame('', $age);
+        $this->assertNull($city);
+        $this->assertFalse($foo);
+        $this->assertTrue($bar);
+    }
+
     public function testHasAnyMethod()
     {
         $request = Request::create('/', 'GET', ['name' => 'Taylor', 'age' => '', 'city' => null]);
@@ -552,7 +587,7 @@ class HttpRequestTest extends TestCase
 
     public function testBooleanMethod()
     {
-        $request = Request::create('/', 'GET', ['with_trashed' => 'false', 'download' => true, 'checked' => 1, 'unchecked' => '0', 'with_on' => 'on', 'with_yes'=> 'yes']);
+        $request = Request::create('/', 'GET', ['with_trashed' => 'false', 'download' => true, 'checked' => 1, 'unchecked' => '0', 'with_on' => 'on', 'with_yes' => 'yes']);
         $this->assertTrue($request->boolean('checked'));
         $this->assertTrue($request->boolean('download'));
         $this->assertFalse($request->boolean('unchecked'));
@@ -570,8 +605,8 @@ class HttpRequestTest extends TestCase
             'zero_padded' => '078',
             'space_padded' => ' 901',
             'nan' => 'nan',
-            'mixed'=> '1ab',
-            'underscore_notation'=> '2_000',
+            'mixed' => '1ab',
+            'underscore_notation' => '2_000',
         ]);
         $this->assertSame(123, $request->integer('int'));
         $this->assertSame(456, $request->integer('raw_int'));
@@ -592,8 +627,8 @@ class HttpRequestTest extends TestCase
             'zero_padded' => '0.78',
             'space_padded' => ' 90.1',
             'nan' => 'nan',
-            'mixed'=> '1.ab',
-            'scientific_notation'=> '1e3',
+            'mixed' => '1.ab',
+            'scientific_notation' => '1e3',
         ]);
         $this->assertSame(1.23, $request->float('float'));
         $this->assertSame(45.6, $request->float('raw_float'));
@@ -977,7 +1012,7 @@ class HttpRequestTest extends TestCase
         $this->assertEquals($payload, $data);
     }
 
-    public function getPrefersCases()
+    public static function getPrefersCases()
     {
         return [
             ['application/json', ['json'], 'json'],

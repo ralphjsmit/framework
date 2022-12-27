@@ -5,6 +5,7 @@ namespace Illuminate\Tests\Support;
 use Illuminate\Bus\Batch;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Bus\QueueingDispatcher;
+use Illuminate\Support\Testing\Fakes\BatchRepositoryFake;
 use Illuminate\Support\Testing\Fakes\BusFake;
 use Mockery as m;
 use PHPUnit\Framework\Constraint\ExceptionMessage;
@@ -26,6 +27,20 @@ class SupportTestingBusFakeTest extends TestCase
     {
         parent::tearDown();
         m::close();
+    }
+
+    public function testItUsesCustomBusRepository()
+    {
+        $busRepository = new BatchRepositoryFake;
+
+        $fake = new BusFake(m::mock(QueueingDispatcher::class), [], $busRepository);
+
+        $this->assertNull($fake->findBatch('non-existent-batch'));
+
+        $batch = $fake->batch([])->dispatch();
+
+        $this->assertSame($batch, $fake->findBatch($batch->id));
+        $this->assertSame($batch, $busRepository->find($batch->id));
     }
 
     public function testAssertDispatched()
@@ -539,6 +554,38 @@ class SupportTestingBusFakeTest extends TestCase
         $this->assertInstanceOf(Batch::class, $batch);
         $this->assertSame('', $batch->name);
         $this->assertSame(0, $batch->totalJobs);
+    }
+
+    public function testIncrementFailedJobsInFakeBatch()
+    {
+        $this->fake->assertNothingBatched();
+        $batch = $this->fake->dispatchFakeBatch('my fake job batch');
+
+        $this->fake->assertBatchCount(1);
+        $this->assertInstanceOf(Batch::class, $batch);
+        $this->assertSame('my fake job batch', $batch->name);
+        $this->assertSame(0, $batch->totalJobs);
+
+        $batch->incrementFailedJobs($batch->id);
+
+        $this->assertSame(0, $batch->failedJobs);
+        $this->assertSame(0, $batch->pendingJobs);
+    }
+
+    public function testDecrementPendingJobsInFakeBatch()
+    {
+        $this->fake->assertNothingBatched();
+        $batch = $this->fake->dispatchFakeBatch('my fake job batch');
+
+        $this->fake->assertBatchCount(1);
+        $this->assertInstanceOf(Batch::class, $batch);
+        $this->assertSame('my fake job batch', $batch->name);
+        $this->assertSame(0, $batch->totalJobs);
+
+        $batch->decrementPendingJobs($batch->id);
+
+        $this->assertSame(0, $batch->failedJobs);
+        $this->assertSame(0, $batch->pendingJobs);
     }
 }
 

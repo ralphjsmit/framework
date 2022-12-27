@@ -9,6 +9,8 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Env;
 use Illuminate\Support\Optional;
 use Illuminate\Support\Stringable;
+use Illuminate\Tests\Support\Fixtures\IntBackedEnum;
+use Illuminate\Tests\Support\Fixtures\StringBackedEnum;
 use IteratorAggregate;
 use LogicException;
 use Mockery as m;
@@ -29,9 +31,22 @@ class SupportHelpersTest extends TestCase
     {
         $str = 'A \'quote\' is <b>bold</b>';
         $this->assertSame('A &#039;quote&#039; is &lt;b&gt;bold&lt;/b&gt;', e($str));
+
         $html = m::mock(Htmlable::class);
         $html->shouldReceive('toHtml')->andReturn($str);
         $this->assertEquals($str, e($html));
+    }
+
+    /**
+     * @requires PHP >= 8.1
+     */
+    public function testEWithEnums()
+    {
+        $enumValue = StringBackedEnum::ADMIN_LABEL;
+        $this->assertSame('I am &#039;admin&#039;', e($enumValue));
+
+        $enumValue = IntBackedEnum::ROLE_ADMIN;
+        $this->assertSame('1', e($enumValue));
     }
 
     public function testBlank()
@@ -53,6 +68,25 @@ class SupportHelpersTest extends TestCase
     {
         $this->assertSame('Baz', class_basename('Foo\Bar\Baz'));
         $this->assertSame('Baz', class_basename('Baz'));
+        // back-slash
+        $this->assertSame('Baz', class_basename('\Baz'));
+        $this->assertSame('Baz', class_basename('\\\\Baz\\'));
+        $this->assertSame('Baz', class_basename('\Foo\Bar\Baz\\'));
+        $this->assertSame('Baz', class_basename('\Foo/Bar\Baz/'));
+        // forward-slash
+        $this->assertSame('Baz', class_basename('/Foo/Bar/Baz/'));
+        $this->assertSame('Baz', class_basename('/Foo///Bar/Baz//'));
+        // accepts objects
+        $this->assertSame('stdClass', class_basename(new stdClass()));
+        // edge-cases
+        $this->assertSame('1', class_basename(1));
+        $this->assertSame('1', class_basename('1'));
+        $this->assertSame('', class_basename(''));
+        $this->assertSame('', class_basename('\\'));
+        $this->assertSame('', class_basename('\\\\'));
+        $this->assertSame('', class_basename('/'));
+        $this->assertSame('', class_basename('///'));
+        $this->assertSame('..', class_basename('\Foo\Bar\Baz\\..\\'));
     }
 
     public function testFilled()
@@ -72,6 +106,15 @@ class SupportHelpersTest extends TestCase
 
     public function testValue()
     {
+        $callable = new class
+        {
+            public function __call($method, $arguments)
+            {
+                return $arguments;
+            }
+        };
+
+        $this->assertSame($callable, value($callable, 'foo'));
         $this->assertSame('foo', value('foo'));
         $this->assertSame('foo', value(function () {
             return 'foo';
@@ -392,30 +435,47 @@ class SupportHelpersTest extends TestCase
 
     public function testClassUsesRecursiveShouldReturnTraitsOnParentClasses()
     {
-        $this->assertSame([
-            SupportTestTraitTwo::class => SupportTestTraitTwo::class,
-            SupportTestTraitOne::class => SupportTestTraitOne::class,
-        ],
-        class_uses_recursive(SupportTestClassTwo::class));
+        $this->assertSame(
+            [
+                SupportTestTraitTwo::class => SupportTestTraitTwo::class,
+                SupportTestTraitOne::class => SupportTestTraitOne::class,
+            ],
+            class_uses_recursive(SupportTestClassTwo::class)
+        );
     }
 
     public function testClassUsesRecursiveAcceptsObject()
     {
-        $this->assertSame([
-            SupportTestTraitTwo::class => SupportTestTraitTwo::class,
-            SupportTestTraitOne::class => SupportTestTraitOne::class,
-        ],
-        class_uses_recursive(new SupportTestClassTwo));
+        $this->assertSame(
+            [
+                SupportTestTraitTwo::class => SupportTestTraitTwo::class,
+                SupportTestTraitOne::class => SupportTestTraitOne::class,
+            ],
+            class_uses_recursive(new SupportTestClassTwo)
+        );
     }
 
     public function testClassUsesRecursiveReturnParentTraitsFirst()
     {
+        $this->assertSame(
+            [
+                SupportTestTraitTwo::class => SupportTestTraitTwo::class,
+                SupportTestTraitOne::class => SupportTestTraitOne::class,
+                SupportTestTraitThree::class => SupportTestTraitThree::class,
+            ],
+            class_uses_recursive(SupportTestClassThree::class)
+        );
+    }
+
+    public function testTraitUsesRecursive()
+    {
         $this->assertSame([
-            SupportTestTraitTwo::class => SupportTestTraitTwo::class,
-            SupportTestTraitOne::class => SupportTestTraitOne::class,
-            SupportTestTraitThree::class => SupportTestTraitThree::class,
+            'Illuminate\Tests\Support\SupportTestTraitTwo' => 'Illuminate\Tests\Support\SupportTestTraitTwo',
+            'Illuminate\Tests\Support\SupportTestTraitOne' => 'Illuminate\Tests\Support\SupportTestTraitOne',
         ],
-        class_uses_recursive(SupportTestClassThree::class));
+            trait_uses_recursive(SupportTestClassOne::class));
+
+        $this->assertSame([], trait_uses_recursive(SupportTestClassTwo::class));
     }
 
     public function testStr()
@@ -749,6 +809,15 @@ class SupportHelpersTest extends TestCase
         }));
     }
 
+    public function testAppendConfig()
+    {
+        $this->assertSame([10000 => 'name', 10001 => 'family'], append_config([1 => 'name', 2 => 'family']));
+        $this->assertSame([10000 => 'name', 10001 => 'family'], append_config(['name', 'family']));
+
+        $array = ['name' => 'Taylor', 'family' => 'Otwell'];
+        $this->assertSame($array, append_config($array));
+    }
+
     public function testEnv()
     {
         $_SERVER['foo'] = 'bar';
@@ -829,7 +898,7 @@ class SupportHelpersTest extends TestCase
         $this->assertSame('From $_SERVER', env('foo'));
     }
 
-    public function providesPregReplaceArrayData()
+    public static function providesPregReplaceArrayData()
     {
         $pointerArray = ['Taylor', 'Otwell'];
 

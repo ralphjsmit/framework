@@ -225,6 +225,27 @@ trait InteractsWithInput
     }
 
     /**
+     * Apply the callback if the request is missing the given input item key.
+     *
+     * @param  string  $key
+     * @param  callable  $callback
+     * @param  callable|null  $default
+     * @return $this|mixed
+     */
+    public function whenMissing($key, callable $callback, callable $default = null)
+    {
+        if ($this->missing($key)) {
+            return $callback(data_get($this->all(), $key)) ?: $this;
+        }
+
+        if ($default) {
+            return $default();
+        }
+
+        return $this;
+    }
+
+    /**
      * Determine if the given input key is an empty string for "has".
      *
      * @param  string  $key
@@ -372,9 +393,11 @@ trait InteractsWithInput
     /**
      * Retrieve input from the request as an enum.
      *
+     * @template TEnum
+     *
      * @param  string  $key
-     * @param  string  $enumClass
-     * @return mixed|null
+     * @param  class-string<TEnum>  $enumClass
+     * @return TEnum|null
      */
     public function enum($key, $enumClass)
     {
