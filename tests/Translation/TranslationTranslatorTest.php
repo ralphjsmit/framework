@@ -15,10 +15,6 @@ class TranslationTranslatorTest extends TestCase
     protected function tearDown(): void
     {
         m::close();
-	    
-Translator::handleMissingTranslationViolationUsing(function (string $key): void {
-    report("Missing translation detected for key [{$key}].");
-});
     }
 
     public function testHasMethodReturnsFalseWhenReturnedTranslationIsNull()
