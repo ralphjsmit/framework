@@ -180,11 +180,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
         // using the typical translation file. This way developers can always just use a
         // helper such as __ instead of having to pick between trans or __ with views.
         if (! isset($line)) {
-            [
-                $namespace,
-                $group,
-                $item,
-            ] = $this->parseKey($key);
+            [$namespace, $group, $item,] = $this->parseKey($key);
 
             // Here we will get the locale that should be used for the language line. If one
             // was not passed, we will use the default locales which was given to us when
@@ -192,7 +188,9 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
             $locales = $fallback ? $this->localeArray($locale) : [$locale];
 
             foreach ($locales as $locale) {
-                if (! is_null($line = $this->getLine($namespace, $group, $locale, $item, $replace))) {
+	            if (! is_null($line = $this->getLine(
+		            $namespace, $group, $locale, $item, $replace
+	            ))) {
                     return $line;
                 }
             }
@@ -225,7 +223,9 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
      */
     public function choice($key, $number, array $replace = [], $locale = null)
     {
-        $line = $this->get($key, $replace, $locale = $this->localeForChoice($locale));
+        $line = $this->get(
+			$key, $replace, $locale = $this->localeForChoice($locale)
+        );
 
         // If the given "number" is actually an array or countable we will simply count the
         // number of elements in an instance. This allows developers to pass an array of
@@ -236,7 +236,9 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
 
         $replace['count'] = $number;
 
-        return $this->makeReplacements($this->getSelector()->choose($line, $number, $locale), $replace);
+        return $this->makeReplacements(
+			$this->getSelector()->choose($line, $number, $locale), $replace
+        );
     }
 
     /**
@@ -408,10 +410,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
      */
     protected function localeArray($locale)
     {
-        $locales = array_filter([
-            $locale ?: $this->locale,
-            $this->fallback,
-        ]);
+        $locales = array_filter([$locale ?: $this->locale, $this->fallback,]);
 
         return call_user_func($this->determineLocalesUsing ?: fn () => $locales, $locales);
     }
@@ -492,10 +491,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
      */
     public function setLocale($locale)
     {
-        if (Str::contains($locale, [
-            '/',
-            '\\',
-        ])) {
+        if (Str::contains($locale, ['/', '\\',])) {
             throw new InvalidArgumentException('Invalid characters present in locale.');
         }
 
@@ -544,10 +540,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
     public function stringable($class, $handler = null)
     {
         if ($class instanceof Closure) {
-            [
-                $class,
-                $handler,
-            ] = [
+            [$class, $handler,] = [
                 $this->firstClosureParameterType($class),
                 $class,
             ];
