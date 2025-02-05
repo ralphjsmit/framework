@@ -2178,5 +2178,9 @@ class Builder implements BuilderContract
     public function __clone()
     {
         $this->query = clone $this->query;
+		
+		if ($this->model && ! $this->model->exists) {
+			$this->model = $this->model->replicate();
+		}
     }
 }
